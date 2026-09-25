@@ -1,0 +1,14 @@
+{
+  "name": "Farm Expense Tracker",
+  "short_name": "Farm Expenses",
+  "description": "Track what you spend on labour, fertilizer, fuel, rent and more — field by field.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#FBF9F4",
+  "theme_color": "#1F3D2B",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icons/icon-1.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
