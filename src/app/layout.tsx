@@ -18,8 +18,8 @@ export const metadata: Metadata = {
   description: "Track what you spend on labour, fertilizer, fuel, rent and more — field by field.",
   manifest: "/manifest.json",
   icons: {
-    icon: "/icons/icon-1.png",
-    apple: "/icons/icon-1.png"
+    icon: "/icons/icon-main.jpg",
+    apple: "/icons/icon-main.jpg"
   }
 };
 

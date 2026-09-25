@@ -72,11 +72,19 @@ export default async function DashboardPage() {
     <main className="mx-auto max-w-2xl px-5 py-8 pb-24">
       <header className="mb-6 flex flex-col gap-4">
         <div className="flex items-start justify-between">
-          <div>
-            <h1 className="font-display text-2xl font-semibold text-forest mb-1">
-              Welcome, {userName} 👋
-            </h1>
-            <p className="text-sm text-ink/60">Farm Financial Overview</p>
+          <div className="flex items-center gap-3">
+            {/* Custom App Logo */}
+            <img
+              src="/icons/icon-main.jpg"
+              alt="Farm Emblem Logo"
+              className="h-10 w-10 rounded-xl shadow-sm border border-forest/20 object-cover"
+            />
+            <div>
+              <h1 className="font-display text-2xl font-semibold text-forest mb-0.5">
+                Welcome, {userName} 👋
+              </h1>
+              <p className="text-sm text-ink/60">Farm Financial Overview</p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <Link

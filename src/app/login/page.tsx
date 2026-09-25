@@ -11,8 +11,15 @@ export default function LoginPage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6 py-12">
-      <h1 className="font-display text-3xl font-semibold text-forest">Farm Expense Tracker</h1>
-      <p className="mt-2 text-ink/70">Log in to track spending on your fields.</p>
+      <div className="flex items-center gap-3 mb-2">
+        <img
+          src="/icons/icon-main.jpg"
+          alt="Farm Emblem Logo"
+          className="h-12 w-12 rounded-xl shadow-md border border-forest/20 object-cover"
+        />
+        <h1 className="font-display text-3xl font-semibold text-forest">Farm Expense Tracker</h1>
+      </div>
+      <p className="mt-1 text-ink/70">Log in to track spending on your fields.</p>
 
       <div className="mt-4 rounded-lg border border-sprout/30 bg-sprout/10 p-3 text-xs italic text-forest">
         🌱 &quot;{quote}&quot;
