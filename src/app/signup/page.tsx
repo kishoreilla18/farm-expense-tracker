@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { signUp } from "@/app/actions";
 import { getRandomQuote } from "@/lib/quotes";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export default function SignupPage({
   searchParams
@@ -44,7 +45,9 @@ export default function SignupPage({
           <label className="mb-1 block text-sm font-medium text-ink/70">Password</label>
           <input type="password" name="password" required minLength={6} className="field-input" placeholder="At least 6 characters" />
         </div>
-        <button type="submit" className="btn-primary mt-2 w-full">Sign up</button>
+        <SubmitButton loadingText="Creating account..." className="btn-primary mt-2 w-full">
+          Sign up
+        </SubmitButton>
       </form>
 
       <p className="mt-6 text-center text-sm text-ink/70">

@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatRupees } from "@/lib/date";
-import { signOut } from "@/app/actions";
 import { parseCreditInfo } from "@/lib/khata";
-
+import LogoutButton from "@/components/LogoutButton";
 import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
@@ -86,19 +85,8 @@ export default async function DashboardPage() {
               <p className="text-sm text-ink/60">Farm Financial Overview</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/khata"
-              className="rounded-md bg-clay/10 px-3 py-1.5 text-xs font-semibold text-clay hover:bg-clay hover:text-paper transition-colors flex items-center gap-1"
-            >
-              📖 Khata Ledger
-            </Link>
-            <form action={signOut}>
-              <button type="submit" className="text-sm text-ink/50 underline underline-offset-2 hover:text-clay">
-                Log out
-              </button>
-            </form>
-          </div>
+
+          <LogoutButton />
         </div>
 
         {/* OVERALL FARM PROFIT & LOSS CARD */}
@@ -124,23 +112,21 @@ export default async function DashboardPage() {
             </div>
           </div>
         </div>
-
-        {grandTotalCreditDues > 0 && (
-          <Link
-            href="/khata"
-            className="flex items-center justify-between rounded-lg border border-clay/30 bg-clay/10 p-3 text-xs font-semibold text-clay hover:bg-clay/15 transition-colors"
-          >
-            <span>📕 You have {formatRupees(grandTotalCreditDues)} in pending shop credit / Udhar dues</span>
-            <span className="underline">View Khata →</span>
-          </Link>
-        )}
       </header>
 
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
         <h2 className="font-display text-xl font-semibold text-forest">Your Crops & Fields</h2>
-        <Link href="/fields/new" className="btn-primary py-2 px-4 text-sm">
-          + Add crop
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/khata"
+            className="rounded-lg border border-clay/30 bg-clay/5 px-3 py-1.5 text-xs font-semibold text-clay hover:bg-clay hover:text-paper transition-colors flex items-center gap-1 active:scale-95"
+          >
+            📖 Khata {grandTotalCreditDues > 0 ? `(${formatRupees(grandTotalCreditDues)})` : ""}
+          </Link>
+          <Link href="/fields/new" className="btn-primary py-1.5 px-3.5 text-xs active:scale-95">
+            + Add crop
+          </Link>
+        </div>
       </div>
 
       {(!fields || fields.length === 0) && (
@@ -162,7 +148,7 @@ export default async function DashboardPage() {
             <li key={f.id}>
               <Link
                 href={`/fields/${f.id}`}
-                className="card flex flex-col gap-3 p-4 hover:border-sprout transition-colors"
+                className="card flex flex-col gap-3 p-4 hover:border-sprout transition-all active:scale-[0.99]"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>

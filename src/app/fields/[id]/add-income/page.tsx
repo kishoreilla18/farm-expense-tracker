@@ -3,6 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { addIncome } from "@/app/actions";
 import { istTodayISO } from "@/lib/date";
+import { SubmitButton } from "@/components/SubmitButton";
+import LogoutButton from "@/components/LogoutButton";
 
 export default async function AddIncomePage({
   params,
@@ -28,10 +30,16 @@ export default async function AddIncomePage({
 
   return (
     <main className="mx-auto max-w-sm px-5 py-8">
-      <Link href={`/fields/${params.id}`} className="text-sm text-ink/50 underline underline-offset-2">
-        ← Back to {title}
-      </Link>
-      <h1 className="font-display mt-3 text-2xl font-semibold text-forest">
+      <div className="flex items-center justify-between mb-4">
+        <Link
+          href={`/fields/${params.id}`}
+          className="inline-flex items-center gap-1 rounded-lg border border-forest/20 bg-forest/5 px-3 py-1.5 text-xs font-medium text-forest hover:bg-forest/10 transition-colors"
+        >
+          ← Back to {title}
+        </Link>
+        <LogoutButton />
+      </div>
+      <h1 className="font-display text-2xl font-semibold text-forest">
         Record Harvest Returns / Income
       </h1>
       <p className="mt-1 text-sm text-ink/60">
@@ -69,9 +77,9 @@ export default async function AddIncomePage({
           <input name="source_notes" className="field-input" placeholder="e.g. Mandi sale, Cotton Trader A" />
         </div>
 
-        <button type="submit" className="btn-primary mt-2 w-full bg-sprout hover:bg-[#3d6431]">
+        <SubmitButton loadingText="Saving income..." className="btn-primary mt-2 w-full bg-sprout hover:bg-[#3d6431]">
           💰 Save Harvest Income
-        </button>
+        </SubmitButton>
       </form>
     </main>
   );

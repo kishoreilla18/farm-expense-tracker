@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { addField } from "@/app/actions";
 import { istTodayISO } from "@/lib/date";
+import { SubmitButton } from "@/components/SubmitButton";
+import LogoutButton from "@/components/LogoutButton";
 
 export default async function NewFieldPage({
   searchParams
@@ -14,10 +16,16 @@ export default async function NewFieldPage({
   if (!user) redirect("/login");
   return (
     <main className="mx-auto max-w-sm px-5 py-8">
-      <Link href="/dashboard" className="text-sm text-ink/50 underline underline-offset-2">
-        ← Back to dashboard
-      </Link>
-      <h1 className="font-display mt-3 text-2xl font-semibold text-forest">Add a field or crop</h1>
+      <div className="flex items-center justify-between mb-4">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-1 rounded-lg border border-forest/20 bg-forest/5 px-3 py-1.5 text-xs font-medium text-forest hover:bg-forest/10 transition-colors"
+        >
+          ← Dashboard
+        </Link>
+        <LogoutButton />
+      </div>
+      <h1 className="font-display text-2xl font-semibold text-forest">Add a field or crop</h1>
       <p className="mt-1 text-sm text-ink/60">
         Create one for each plot of land or crop you want to track separately.
       </p>
@@ -43,7 +51,9 @@ export default async function NewFieldPage({
           <label className="mb-1 block text-sm font-medium text-ink/70">Start date</label>
           <input name="start_date" type="date" defaultValue={istTodayISO()} className="field-input" />
         </div>
-        <button type="submit" className="btn-primary mt-2 w-full">Save field</button>
+        <SubmitButton loadingText="Saving crop..." className="btn-primary mt-2 w-full">
+          Save field
+        </SubmitButton>
       </form>
     </main>
   );

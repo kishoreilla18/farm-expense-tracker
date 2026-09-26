@@ -3,8 +3,10 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatRupees, formatDateLong } from "@/lib/date";
 import { categoryLabel, categoryIcon } from "@/lib/categories";
-import { deleteExpense, deleteField, deleteIncome, sendFieldEmailReport, toggleCropComplete, settleExpenseCredit } from "@/app/actions";
+import { deleteExpense, deleteField, deleteIncome, sendFieldEmailReport, toggleCropComplete, settleExpenseCredit, recordPartialPayment } from "@/app/actions";
 import { parseCreditInfo } from "@/lib/khata";
+import { SubmitButton } from "@/components/SubmitButton";
+import LogoutButton from "@/components/LogoutButton";
 
 export default async function FieldDetailPage({
   params,
@@ -46,8 +48,8 @@ export default async function FieldDetailPage({
   const netPnL = totalIncome - totalExpenses;
 
   const totalCreditDues = (expenses ?? []).reduce((sum, e) => {
-    const cred = parseCreditInfo(e.notes);
-    return cred.isCredit ? sum + Number(e.amount) : sum;
+    const cred = parseCreditInfo(e.notes, Number(e.amount));
+    return cred.isCredit ? sum + cred.pendingBalance : sum;
   }, 0);
 
   // Group expenses by date
@@ -64,9 +66,16 @@ export default async function FieldDetailPage({
 
   return (
     <main className="mx-auto max-w-2xl px-5 py-8 pb-32">
-      <Link href="/dashboard" className="text-sm text-ink/50 underline underline-offset-2">
-        ← All fields
-      </Link>
+      {/* TRANSPARENT HEADER NAVIGATION */}
+      <div className="flex items-center justify-between mb-4">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-1 rounded-lg border border-forest/20 bg-forest/5 px-3 py-1.5 text-xs font-medium text-forest hover:bg-forest/10 transition-colors"
+        >
+          ← All fields
+        </Link>
+        <LogoutButton />
+      </div>
 
       {searchParams?.success && (
         <div className="mt-3 rounded-md bg-sprout/15 px-4 py-3 text-sm font-semibold text-sprout">
@@ -108,12 +117,12 @@ export default async function FieldDetailPage({
           </Link>
           <form action={sendFieldEmailReport}>
             <input type="hidden" name="field_id" value={field.id} />
-            <button
-              type="submit"
+            <SubmitButton
+              loadingText="Sending..."
               className="rounded-md bg-forest/10 px-3 py-1.5 text-xs font-semibold text-forest hover:bg-forest hover:text-paper transition-colors"
             >
               📩 Email Report
-            </button>
+            </SubmitButton>
           </form>
         </div>
       </div>
@@ -125,8 +134,8 @@ export default async function FieldDetailPage({
           <form action={toggleCropComplete}>
             <input type="hidden" name="field_id" value={field.id} />
             <input type="hidden" name="is_completed" value={String(field.is_completed)} />
-            <button
-              type="submit"
+            <SubmitButton
+              loadingText="Updating..."
               className={`rounded px-3 py-1 text-xs font-semibold border ${
                 field.is_completed
                   ? "border-forest text-forest hover:bg-forest/10"
@@ -134,7 +143,7 @@ export default async function FieldDetailPage({
               }`}
             >
               {field.is_completed ? "Reopen Crop Season" : "✓ Mark Crop Harvested"}
-            </button>
+            </SubmitButton>
           </form>
         </div>
 
@@ -191,13 +200,14 @@ export default async function FieldDetailPage({
                 <form action={deleteIncome}>
                   <input type="hidden" name="id" value={inc.id} />
                   <input type="hidden" name="field_id" value={field.id} />
-                  <button
-                    type="submit"
+                  <SubmitButton
+                    loadingText="..."
+                    confirmText="Are you sure you want to delete this income record?"
                     aria-label="Delete income"
                     className="rounded px-2 py-1 text-xs text-ink/30 hover:bg-clay/10 hover:text-clay"
                   >
                     ✕
-                  </button>
+                  </SubmitButton>
                 </form>
               </li>
             ))}
@@ -222,52 +232,91 @@ export default async function FieldDetailPage({
             </div>
             <ul className="flex flex-col">
               {g.items!.map((e) => {
-                const cred = parseCreditInfo(e.notes);
+                const cred = parseCreditInfo(e.notes, Number(e.amount));
 
                 return (
-                  <li key={e.id} className="flex items-center gap-3 border-b border-line py-2.5 last:border-none">
-                    <span className="text-xl" aria-hidden>{categoryIcon(e.category)}</span>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-ink">{categoryLabel(e.category, e.custom_label)}</p>
-                        {cred.isCredit && (
-                          <span className="rounded bg-clay/15 px-2 py-0.5 text-[10px] font-bold text-clay">
-                            📕 Udhar{cred.lenderName ? `: ${cred.lenderName}` : ""}
-                          </span>
-                        )}
+                  <li key={e.id} className="flex flex-col gap-2 border-b border-line py-3 last:border-none">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl" aria-hidden>{categoryIcon(e.category)}</span>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium text-ink">{categoryLabel(e.category, e.custom_label)}</p>
+                          {cred.isCredit && (
+                            <span className="rounded bg-clay/15 px-2 py-0.5 text-[10px] font-bold text-clay">
+                              📕 {cred.pendingBalance > 0 ? "Udhar Dues" : "Paid"}{cred.lenderName ? `: ${cred.lenderName}` : ""}
+                            </span>
+                          )}
+                        </div>
+                        {cred.cleanNotes && <p className="text-xs text-ink/50 mt-0.5">{cred.cleanNotes}</p>}
                       </div>
-                      {cred.cleanNotes && <p className="text-xs text-ink/50">{cred.cleanNotes}</p>}
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-ink">{formatRupees(Number(e.amount))}</p>
                       
-                      {cred.isCredit && (
-                        <form action={settleExpenseCredit}>
+                      <div className="flex items-center gap-3 text-right">
+                        <div>
+                          <p className="font-semibold text-ink">{formatRupees(Number(e.amount))}</p>
+                          {cred.isCredit && cred.pendingBalance > 0 && (
+                            <p className="text-[11px] font-semibold text-clay">
+                              Pending: {formatRupees(cred.pendingBalance)}
+                            </p>
+                          )}
+                        </div>
+
+                        <form action={deleteExpense}>
                           <input type="hidden" name="id" value={e.id} />
                           <input type="hidden" name="field_id" value={field.id} />
-                          <button
-                            type="submit"
-                            title="Mark as paid / settled"
-                            className="rounded bg-sprout/15 px-2 py-1 text-[11px] font-semibold text-sprout hover:bg-sprout hover:text-paper transition-colors"
+                          <SubmitButton
+                            loadingText="..."
+                            confirmText="Are you sure you want to delete this expense record?"
+                            aria-label="Delete expense"
+                            className="rounded px-2 py-1 text-ink/30 hover:bg-clay/10 hover:text-clay"
                           >
-                            ✓ Settle
-                          </button>
+                            ✕
+                          </SubmitButton>
                         </form>
-                      )}
-
-                      <form action={deleteExpense}>
-                        <input type="hidden" name="id" value={e.id} />
-                        <input type="hidden" name="field_id" value={field.id} />
-                        <button
-                          type="submit"
-                          aria-label="Delete expense"
-                          className="ml-1 rounded px-2 py-1 text-ink/30 hover:bg-clay/10 hover:text-clay"
-                        >
-                          ✕
-                        </button>
-                      </form>
+                      </div>
                     </div>
+
+                    {/* PARTIAL PAYMENT / SETTLE ACTION BAR */}
+                    {cred.isCredit && cred.pendingBalance > 0 && (
+                      <div className="flex items-center justify-between gap-2 bg-clay/5 p-2 rounded-md border border-clay/20 text-xs mt-1">
+                        <span className="text-ink/70">
+                          Paid: <strong>{formatRupees(cred.paidAmount)}</strong> | Due: <strong className="text-clay">{formatRupees(cred.pendingBalance)}</strong>
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <form action={recordPartialPayment} className="flex items-center gap-1">
+                            <input type="hidden" name="id" value={e.id} />
+                            <input type="hidden" name="field_id" value={field.id} />
+                            <input
+                              name="payment_add_amount"
+                              type="number"
+                              inputMode="decimal"
+                              step="0.01"
+                              min="0.01"
+                              required
+                              placeholder="Pay ₹"
+                              className="w-20 px-2 py-1 border border-line rounded text-xs"
+                            />
+                            <SubmitButton
+                              loadingText="Paying..."
+                              className="rounded bg-mustard/20 px-2 py-1 font-semibold text-forest hover:bg-mustard hover:text-forest transition-colors text-[11px]"
+                            >
+                              - Pay
+                            </SubmitButton>
+                          </form>
+
+                          <form action={settleExpenseCredit}>
+                            <input type="hidden" name="id" value={e.id} />
+                            <input type="hidden" name="field_id" value={field.id} />
+                            <SubmitButton
+                              loadingText="Settling..."
+                              confirmText="Are you sure you want to mark this credit / worker bill as fully settled?"
+                              className="rounded bg-sprout px-2.5 py-1 font-semibold text-paper hover:bg-[#3d6431] transition-colors text-[11px]"
+                            >
+                              ✓ Settle All
+                            </SubmitButton>
+                          </form>
+                        </div>
+                      </div>
+                    )}
                   </li>
                 );
               })}
@@ -279,9 +328,13 @@ export default async function FieldDetailPage({
       <div className="mt-10 border-t border-line pt-4">
         <form action={deleteField}>
           <input type="hidden" name="id" value={field.id} />
-          <button type="submit" className="btn-danger py-2 px-4 text-sm">
+          <SubmitButton
+            loadingText="Deleting field..."
+            confirmText="Are you sure you want to permanently delete this field and all associated expenses and income?"
+            className="btn-danger py-2 px-4 text-sm"
+          >
             Delete this field
-          </button>
+          </SubmitButton>
         </form>
       </div>
 

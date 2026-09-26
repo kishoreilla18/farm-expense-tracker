@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { signIn } from "@/app/actions";
 import { getRandomQuote } from "@/lib/quotes";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export default function LoginPage({
   searchParams
@@ -40,7 +41,9 @@ export default function LoginPage({
           <label className="mb-1 block text-sm font-medium text-ink/70">Password</label>
           <input type="password" name="password" required className="field-input" placeholder="••••••••" />
         </div>
-        <button type="submit" className="btn-primary mt-2 w-full">Log in</button>
+        <SubmitButton loadingText="Logging in..." className="btn-primary mt-2 w-full">
+          Log in
+        </SubmitButton>
       </form>
 
       <p className="mt-6 text-center text-sm text-ink/70">

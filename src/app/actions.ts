@@ -32,7 +32,7 @@ export async function signUp(formData: FormData) {
   }
 
   revalidatePath("/dashboard");
-  redirect("/dashboard");
+  redirect("/dashboard?success=" + encodeURIComponent("Welcome to Farm Expense Tracker! 🎉"));
 }
 
 export async function signIn(formData: FormData) {
@@ -43,7 +43,7 @@ export async function signIn(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) redirect(`/login?error=${encodeURIComponent(error.message)}`);
-  redirect("/dashboard");
+  redirect("/dashboard?success=" + encodeURIComponent("Welcome back! 👋"));
 }
 
 export async function signOut() {
@@ -77,7 +77,7 @@ export async function addField(formData: FormData) {
   if (error) redirect(`/fields/new?error=${encodeURIComponent(error.message)}`);
 
   revalidatePath("/dashboard");
-  redirect("/dashboard");
+  redirect("/dashboard?success=" + encodeURIComponent(`Crop "${crop_name || name}" added successfully! 🌱`));
 }
 
 export async function deleteField(formData: FormData) {
@@ -89,10 +89,12 @@ export async function deleteField(formData: FormData) {
   await supabase.from("fields").delete().eq("id", id).eq("user_id", user.id);
 
   revalidatePath("/dashboard");
-  redirect("/dashboard");
+  redirect("/dashboard?success=" + encodeURIComponent("Field deleted successfully."));
 }
 
 // ---------- EXPENSES ----------
+
+import { buildCreditTag, parseCreditInfo } from "@/lib/khata";
 
 export async function addExpense(formData: FormData) {
   const supabase = createClient();
@@ -107,12 +109,24 @@ export async function addExpense(formData: FormData) {
   const expense_date = String(formData.get("expense_date") || "") || istTodayISO();
   let notes = String(formData.get("notes") || "").trim() || null;
 
-  const is_credit = formData.get("is_credit") === "on" || formData.get("is_credit") === "true";
+  const payment_status = String(formData.get("payment_status") || "paid").trim();
+  const is_credit_checkbox = formData.get("is_credit") === "on" || formData.get("is_credit") === "true";
   const lender_name = String(formData.get("lender_name") || "").trim();
+  const paid_amount_raw = String(formData.get("paid_amount") || "0").trim();
+  let paid_amount = Number(paid_amount_raw);
 
-  if (is_credit) {
-    const tag = `[UDHAR:${lender_name ? ` ${lender_name}` : ""}]`;
+  if (payment_status === "unpaid" || (is_credit_checkbox && payment_status === "paid")) {
+    paid_amount = 0;
+    const tag = buildCreditTag(lender_name, 0);
     notes = notes ? `${tag} ${notes}` : tag;
+  } else if (payment_status === "partial") {
+    paid_amount = Math.max(0, Math.min(paid_amount, amount));
+    if (paid_amount >= amount) {
+      // Fully paid
+    } else {
+      const tag = buildCreditTag(lender_name, paid_amount);
+      notes = notes ? `${tag} ${notes}` : tag;
+    }
   }
 
   if (!field_id || !category || !amountRaw || isNaN(amount) || amount <= 0) {
@@ -136,7 +150,7 @@ export async function addExpense(formData: FormData) {
   revalidatePath(`/fields/${field_id}`);
   revalidatePath("/dashboard");
   revalidatePath("/khata");
-  redirect(`/fields/${field_id}`);
+  redirect(`/fields/${field_id}?success=` + encodeURIComponent("Expense saved successfully! 💸"));
 }
 
 export async function deleteExpense(formData: FormData) {
@@ -154,8 +168,8 @@ export async function deleteExpense(formData: FormData) {
   revalidatePath("/dashboard");
   revalidatePath("/khata");
 
-  if (redirect_to) redirect(redirect_to);
-  redirect(`/fields/${field_id}`);
+  const targetUrl = redirect_to || `/fields/${field_id}`;
+  redirect(`${targetUrl}?success=${encodeURIComponent("Expense deleted.")}`);
 }
 
 export async function settleExpenseCredit(formData: FormData) {
@@ -175,7 +189,7 @@ export async function settleExpenseCredit(formData: FormData) {
     .single();
 
   if (expense && expense.notes) {
-    // Remove [UDHAR: ...] prefix
+    // Remove [UDHAR: ...] prefix completely (mark fully paid)
     const updatedNotes = expense.notes.replace(/\[UDHAR:[^\]]*\]\s*/g, "").trim() || null;
     await supabase
       .from("expenses")
@@ -188,8 +202,62 @@ export async function settleExpenseCredit(formData: FormData) {
   revalidatePath("/dashboard");
   revalidatePath("/khata");
 
-  if (redirect_to) redirect(redirect_to);
-  redirect(`/fields/${field_id}`);
+  const targetUrl = redirect_to || `/fields/${field_id}`;
+  redirect(`${targetUrl}?success=${encodeURIComponent("Bill marked as fully settled! ✓")}`);
+}
+
+export async function recordPartialPayment(formData: FormData) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const id = String(formData.get("id") || "");
+  const field_id = String(formData.get("field_id") || "");
+  const paymentAddRaw = String(formData.get("payment_add_amount") || "");
+  const paymentAdd = Number(paymentAddRaw);
+  const redirect_to = String(formData.get("redirect_to") || "");
+
+  if (!id || isNaN(paymentAdd) || paymentAdd <= 0) {
+    const targetUrl = redirect_to || `/fields/${field_id}`;
+    redirect(targetUrl);
+  }
+
+  const { data: expense } = await supabase
+    .from("expenses")
+    .select("amount, notes")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (expense && expense.notes) {
+    const totalAmt = Number(expense.amount);
+    const cred = parseCreditInfo(expense.notes, totalAmt);
+
+    if (cred.isCredit) {
+      const newPaid = cred.paidAmount + paymentAdd;
+      let updatedNotes: string | null = null;
+      if (newPaid >= totalAmt) {
+        // Fully settled
+        updatedNotes = cred.cleanNotes || null;
+      } else {
+        const tag = buildCreditTag(cred.lenderName, newPaid);
+        updatedNotes = cred.cleanNotes ? `${tag} ${cred.cleanNotes}` : tag;
+      }
+
+      await supabase
+        .from("expenses")
+        .update({ notes: updatedNotes })
+        .eq("id", id)
+        .eq("user_id", user.id);
+    }
+  }
+
+  if (field_id) revalidatePath(`/fields/${field_id}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/khata");
+
+  const targetUrl = redirect_to || `/fields/${field_id}`;
+  redirect(`${targetUrl}?success=${encodeURIComponent("Partial payment recorded! 💵")}`);
 }
 
 // ---------- EMAIL REPORT ----------
@@ -249,7 +317,7 @@ export async function sendFieldEmailReport(formData: FormData) {
   if (errorMessage) {
     redirect(`/fields/${field_id}?error=${encodeURIComponent(errorMessage)}`);
   } else {
-    redirect(`/fields/${field_id}?success=${encodeURIComponent("Email report sent successfully to user and admin!")}`);
+    redirect(`/fields/${field_id}?success=${encodeURIComponent("Email report sent successfully! 📩")}`);
   }
 }
 
@@ -298,7 +366,7 @@ export async function addIncome(formData: FormData) {
 
   revalidatePath(`/fields/${field_id}`);
   revalidatePath("/dashboard");
-  redirect(`/fields/${field_id}`);
+  redirect(`/fields/${field_id}?success=` + encodeURIComponent("Harvest income recorded! 💰"));
 }
 
 export async function deleteIncome(formData: FormData) {
@@ -327,7 +395,7 @@ export async function deleteIncome(formData: FormData) {
 
   revalidatePath(`/fields/${field_id}`);
   revalidatePath("/dashboard");
-  redirect(`/fields/${field_id}`);
+  redirect(`/fields/${field_id}?success=` + encodeURIComponent("Income record deleted."));
 }
 
 export async function toggleCropComplete(formData: FormData) {
@@ -346,5 +414,6 @@ export async function toggleCropComplete(formData: FormData) {
 
   revalidatePath(`/fields/${field_id}`);
   revalidatePath("/dashboard");
-  redirect(`/fields/${field_id}`);
+  const msg = !current_status ? "Crop marked as harvest completed! 🌾" : "Crop season reopened!";
+  redirect(`/fields/${field_id}?success=` + encodeURIComponent(msg));
 }
