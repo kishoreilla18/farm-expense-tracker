@@ -68,25 +68,28 @@ export default async function DashboardPage() {
   const grandNetPnL = grandTotalIncome - grandTotalSpent;
 
   return (
-    <main className="mx-auto max-w-2xl px-5 py-8 pb-24">
-      <header className="mb-6 flex flex-col gap-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
+    <main className="mx-auto max-w-2xl px-5 py-6 pb-24">
+      <header className="mb-5 flex flex-col gap-3">
+        {/* COMPACT TOP HEADER */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
             {/* Custom App Logo */}
             <img
               src="/icons/icon-main.jpg"
               alt="Farm Emblem Logo"
-              className="h-10 w-10 rounded-xl shadow-sm border border-forest/20 object-cover"
+              className="h-8 w-8 rounded-lg shadow-sm border border-forest/20 object-cover shrink-0"
             />
-            <div>
-              <h1 className="font-display text-2xl font-semibold text-forest mb-0.5">
+            <div className="min-w-0">
+              <h1 className="font-display text-sm sm:text-base font-semibold text-forest truncate">
                 Welcome, {userName} 👋
               </h1>
-              <p className="text-sm text-ink/60">Farm Financial Overview</p>
+              <p className="text-[11px] text-ink/50 leading-none mt-0.5">Farm Financial Overview</p>
             </div>
           </div>
 
-          <LogoutButton />
+          <div className="shrink-0">
+            <LogoutButton />
+          </div>
         </div>
 
         {/* OVERALL FARM PROFIT & LOSS CARD */}
@@ -115,7 +118,7 @@ export default async function DashboardPage() {
       </header>
 
       <div className="mb-4 flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
-        <h2 className="font-display text-xl font-semibold text-forest">Your Crops & Fields</h2>
+        <h2 className="font-display text-lg font-semibold text-forest">Your Crops & Fields</h2>
         <div className="flex items-center gap-2">
           <Link
             href="/khata"
